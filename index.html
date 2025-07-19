@@ -1,0 +1,2298 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Professional Flowchart Builder</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+            background: #f8fafc;
+            height: 100vh;
+            overflow: hidden;
+            color: #1e293b;
+        }
+
+        .app-container {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            background: white;
+        }
+
+        .toolbar {
+            background: white;
+            border-bottom: 1px solid #e2e8f0;
+            padding: 16px 24px;
+            display: flex;
+            align-items: center;
+            gap: 24px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            z-index: 1000;
+        }
+
+        .toolbar h1 {
+            font-size: 20px;
+            font-weight: 600;
+            color: #0f172a;
+            margin-right: auto;
+            letter-spacing: -0.025em;
+        }
+
+        .shape-palette {
+            display: flex;
+            gap: 8px;
+            padding: 8px;
+            background: #f1f5f9;
+            border-radius: 8px;
+            border: 1px solid #e2e8f0;
+        }
+
+        .shape-item {
+            width: 64px;
+            height: 40px;
+            background: white;
+            border: 1px solid #cbd5e1;
+            border-radius: 6px;
+            cursor: grab;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 10px;
+            font-weight: 500;
+            color: #475569;
+            transition: all 0.2s ease;
+            user-select: none;
+        }
+
+        .shape-item:hover {
+            border-color: #3b82f6;
+            background: #f8fafc;
+            transform: translateY(-1px);
+            box-shadow: 0 2px 8px rgba(59, 130, 246, 0.15);
+        }
+
+        .shape-item.diamond {
+            transform: rotate(45deg);
+        }
+
+        .shape-item.diamond span {
+            transform: rotate(-45deg);
+        }
+
+        .shape-item.circle {
+            border-radius: 50%;
+        }
+
+        .toolbar-controls {
+            display: flex;
+            gap: 8px;
+        }
+
+        .tool-btn {
+            padding: 8px 16px;
+            border: 1px solid #e2e8f0;
+            border-radius: 6px;
+            background: white;
+            font-size: 13px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            color: #475569;
+        }
+
+        .tool-btn:hover {
+            border-color: #cbd5e1;
+            background: #f8fafc;
+        }
+
+        .tool-btn.primary {
+            background: #3b82f6;
+            border-color: #3b82f6;
+            color: white;
+        }
+
+        .tool-btn.primary:hover {
+            background: #2563eb;
+        }
+
+        .tool-btn.success {
+            background: #10b981;
+            border-color: #10b981;
+            color: white;
+        }
+
+        .tool-btn.success:hover {
+            background: #059669;
+        }
+
+        .tool-btn.danger {
+            background: #ef4444;
+            border-color: #ef4444;
+            color: white;
+        }
+
+        .tool-btn.danger:hover {
+            background: #dc2626;
+        }
+
+        .tool-btn.active {
+            background: #f59e0b;
+            border-color: #f59e0b;
+            color: white;
+        }
+
+        .main-content {
+            display: flex;
+            flex: 1;
+            overflow: hidden;
+        }
+
+        .canvas-area {
+            flex: 1;
+            position: relative;
+            background: #fafbfc;
+            overflow: hidden;
+            border-right: 1px solid #e2e8f0;
+        }
+
+        .canvas-container {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .canvas {
+            width: 100%;
+            height: 100%;
+            position: relative;
+            background-image: 
+                radial-gradient(circle at 1px 1px, #cbd5e1 1px, transparent 0);
+            background-size: 20px 20px;
+            cursor: default;
+            transform-origin: 0 0;
+            transition: transform 0.2s ease;
+        }
+
+        .canvas.connection-mode {
+            cursor: crosshair;
+        }
+
+        .canvas.grabbing {
+            cursor: grabbing;
+        }
+
+        .canvas.panning {
+            cursor: move;
+        }
+
+        .node {
+            position: absolute;
+            min-width: 120px;
+            min-height: 60px;
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: move;
+            user-select: none;
+            font-size: 13px;
+            font-weight: 500;
+            text-align: center;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            transition: all 0.2s ease;
+            border: 2px solid transparent;
+            z-index: 10;
+            line-height: 1.3;
+            padding: 12px;
+        }
+
+        .node:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        }
+
+        .node.selected {
+            border-color: #f59e0b;
+            box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.2), 0 4px 12px rgba(0, 0, 0, 0.15);
+        }
+
+        .node.shift-selected {
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2), 0 4px 12px rgba(0, 0, 0, 0.15);
+        }
+
+        .node.connecting {
+            animation: pulse 1.5s infinite;
+            border-color: #f59e0b !important;
+        }
+
+        .node.editing {
+            cursor: text;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.3), 0 4px 12px rgba(0, 0, 0, 0.15);
+        }
+
+        .node.has-details {
+            position: relative;
+        }
+
+        .node.has-details::after {
+            content: '💬';
+            position: absolute;
+            top: -8px;
+            right: -8px;
+            font-size: 12px;
+            background: white;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .node-content {
+            outline: none;
+            min-width: 80px;
+            padding: 4px 8px;
+            border-radius: 4px;
+            background: transparent;
+        }
+
+        .node-content[contenteditable="true"] {
+            background: rgba(255, 255, 255, 0.9);
+            cursor: text;
+        }
+
+        .node.rectangle {
+            background: #3b82f6;
+            color: white;
+        }
+
+        .node.diamond {
+            background: #ef4444;
+            color: white;
+            transform: rotate(45deg);
+            border-radius: 12px;
+        }
+
+        .node.diamond .node-content {
+            transform: rotate(-45deg);
+            font-size: 11px;
+        }
+
+        .node.circle {
+            background: #10b981;
+            color: white;
+            border-radius: 50%;
+        }
+
+        .node.process {
+            background: #0ea5e9;
+            color: white;
+        }
+
+        .node.database {
+            background: #8b5cf6;
+            color: white;
+            border-radius: 30px 30px 6px 6px;
+        }
+
+        .group-box {
+            position: absolute;
+            border: 2px dashed #64748b;
+            background: rgba(100, 116, 139, 0.05);
+            border-radius: 8px;
+            pointer-events: none;
+            z-index: 1;
+        }
+
+        .group-box.active {
+            border-color: #10b981;
+            background: rgba(16, 185, 129, 0.05);
+        }
+
+        .connection {
+            position: absolute;
+            pointer-events: none;
+            z-index: 5;
+        }
+
+        .connection-path {
+            fill: none;
+            stroke: #64748b;
+            stroke-width: 2;
+            stroke-linecap: round;
+            transition: all 0.2s ease;
+        }
+
+        .connection-path:hover {
+            stroke: #3b82f6;
+            stroke-width: 3;
+        }
+
+        .connection-arrow {
+            fill: #64748b;
+            transition: all 0.2s ease;
+        }
+
+        .connection:hover .connection-arrow {
+            fill: #3b82f6;
+        }
+
+        .temp-line {
+            position: absolute;
+            height: 2px;
+            background: #3b82f6;
+            transform-origin: left center;
+            pointer-events: none;
+            z-index: 15;
+            border-radius: 1px;
+        }
+
+        .sidebar {
+            width: 0;
+            background: white;
+            border-left: 1px solid #e2e8f0;
+            overflow: hidden;
+            transition: width 0.3s ease;
+            box-shadow: -2px 0 8px rgba(0, 0, 0, 0.05);
+        }
+
+        .sidebar.open {
+            width: 320px;
+        }
+
+        .sidebar-content {
+            width: 320px;
+            padding: 24px;
+            height: 100%;
+            overflow-y: auto;
+        }
+
+        .panel {
+            margin-bottom: 24px;
+        }
+
+        .panel h3 {
+            font-size: 15px;
+            font-weight: 600;
+            color: #0f172a;
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .form-group {
+            margin-bottom: 16px;
+        }
+
+        .form-group label {
+            display: block;
+            font-size: 13px;
+            font-weight: 500;
+            color: #374151;
+            margin-bottom: 6px;
+        }
+
+        .form-control {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid #d1d5db;
+            border-radius: 6px;
+            font-size: 13px;
+            transition: all 0.2s ease;
+            background: white;
+            color: #1f2937;
+        }
+
+        .form-control:focus {
+            outline: none;
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        }
+
+        .btn {
+            width: 100%;
+            padding: 10px 16px;
+            border: none;
+            border-radius: 6px;
+            font-size: 13px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+        }
+
+        .btn.primary {
+            background: #3b82f6;
+            color: white;
+        }
+
+        .btn.primary:hover:not(:disabled) {
+            background: #2563eb;
+        }
+
+        .btn.danger {
+            background: #ef4444;
+            color: white;
+        }
+
+        .btn.danger:hover:not(:disabled) {
+            background: #dc2626;
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .color-picker {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin-top: 8px;
+        }
+
+        .color-option {
+            width: 28px;
+            height: 28px;
+            border-radius: 4px;
+            cursor: pointer;
+            border: 2px solid transparent;
+            transition: all 0.2s ease;
+        }
+
+        .color-option.selected {
+            border-color: #0f172a;
+            transform: scale(1.1);
+        }
+
+        .color-option:hover:not(.selected) {
+            transform: scale(1.05);
+            border-color: #cbd5e1;
+        }
+
+        .mermaid-code {
+            background: #1e293b;
+            color: #e2e8f0;
+            padding: 16px;
+            border-radius: 6px;
+            font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace;
+            font-size: 12px;
+            line-height: 1.5;
+            max-height: 200px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+            border: 1px solid #334155;
+        }
+
+        .toast {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            background: #0f172a;
+            color: white;
+            padding: 12px 16px;
+            border-radius: 6px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            z-index: 2000;
+            opacity: 0;
+            transform: translateY(10px);
+            transition: all 0.3s ease;
+            font-size: 13px;
+            font-weight: 500;
+        }
+
+        .toast.show {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .context-menu {
+            position: fixed;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
+            padding: 6px 0;
+            z-index: 2000;
+            min-width: 180px;
+            border: 1px solid #e2e8f0;
+            font-size: 13px;
+        }
+
+        .context-menu-item {
+            padding: 10px 16px;
+            cursor: pointer;
+            transition: background 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: #374151;
+            font-weight: 500;
+        }
+
+        .context-menu-item:hover {
+            background: #f8fafc;
+        }
+
+        .context-menu-item.danger {
+            color: #ef4444;
+        }
+
+        .context-menu-item.danger:hover {
+            background: #fef2f2;
+        }
+
+        .tooltip {
+            position: fixed;
+            background: #1e293b;
+            color: #e2e8f0;
+            padding: 16px 20px;
+            border-radius: 8px;
+            font-size: 13px;
+            line-height: 1.6;
+            max-width: 350px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.25);
+            z-index: 1000;
+            pointer-events: none;
+            opacity: 0;
+            transform: translateY(10px);
+            transition: all 0.2s ease;
+            border: 1px solid #334155;
+        }
+
+        .tooltip.show {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .tooltip h4 {
+            font-weight: 600;
+            margin-bottom: 10px;
+            color: #f1f5f9;
+            font-size: 14px;
+        }
+
+        .tooltip ul {
+            margin: 0;
+            padding-left: 20px;
+        }
+
+        .tooltip li {
+            margin-bottom: 6px;
+        }
+
+        .tooltip .description {
+            font-style: italic;
+            color: #94a3b8;
+            margin-top: 10px;
+            padding-top: 10px;
+            border-top: 1px solid #334155;
+        }
+
+        .undo-redo {
+            display: flex;
+            gap: 4px;
+        }
+
+        .history-btn {
+            width: 32px;
+            height: 32px;
+            border: 1px solid #e2e8f0;
+            border-radius: 4px;
+            background: white;
+            color: #64748b;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+        }
+
+        .history-btn:hover:not(:disabled) {
+            background: #f8fafc;
+            border-color: #cbd5e1;
+        }
+
+        .history-btn:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.02); }
+        }
+
+        .grid-toggle {
+            position: absolute;
+            top: 16px;
+            left: 16px;
+            background: white;
+            border: 1px solid #e2e8f0;
+            border-radius: 6px;
+            padding: 6px 10px;
+            cursor: pointer;
+            font-size: 11px;
+            font-weight: 500;
+            transition: all 0.2s ease;
+            color: #64748b;
+        }
+
+        .grid-toggle:hover {
+            background: #f8fafc;
+            border-color: #cbd5e1;
+        }
+
+        .close-sidebar {
+            position: absolute;
+            top: 16px;
+            right: 16px;
+            width: 24px;
+            height: 24px;
+            border: none;
+            background: none;
+            color: #64748b;
+            cursor: pointer;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s ease;
+        }
+
+        .close-sidebar:hover {
+            background: #f1f5f9;
+            color: #374151;
+        }
+
+        .stats {
+            position: absolute;
+            bottom: 16px;
+            left: 16px;
+            background: white;
+            border: 1px solid #e2e8f0;
+            border-radius: 6px;
+            padding: 8px 12px;
+            font-size: 11px;
+            color: #64748b;
+            font-weight: 500;
+        }
+
+        .zoom-controls {
+            position: absolute;
+            bottom: 16px;
+            right: 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .zoom-btn {
+            width: 32px;
+            height: 32px;
+            background: white;
+            border: 1px solid #e2e8f0;
+            border-radius: 6px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            font-weight: bold;
+            color: #64748b;
+            transition: all 0.2s ease;
+        }
+
+        .zoom-btn:hover {
+            background: #f8fafc;
+            border-color: #cbd5e1;
+        }
+
+        .zoom-level {
+            background: white;
+            border: 1px solid #e2e8f0;
+            border-radius: 6px;
+            padding: 4px 8px;
+            font-size: 10px;
+            font-weight: 500;
+            color: #64748b;
+            text-align: center;
+        }
+
+        .mode-indicator {
+            position: absolute;
+            top: 16px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #f59e0b;
+            color: white;
+            padding: 8px 16px;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 500;
+            display: none;
+            animation: fadeIn 0.3s ease;
+        }
+
+        .mode-indicator.show {
+            display: block;
+        }
+
+        .mode-indicator.shift-mode {
+            background: #3b82f6;
+        }
+
+        .mode-indicator.right-click-mode {
+            background: #10b981;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateX(-50%) translateY(-10px); }
+            to { opacity: 1; transform: translateX(-50%) translateY(0); }
+        }
+
+        .help-panel {
+            position: absolute;
+            top: 60px;
+            right: 16px;
+            background: white;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 16px;
+            max-width: 300px;
+            font-size: 11px;
+            color: #64748b;
+            line-height: 1.6;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s ease;
+        }
+
+        .help-panel.show {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .help-panel h4 {
+            color: #374151;
+            margin-bottom: 8px;
+            font-weight: 600;
+        }
+
+        .help-panel ul {
+            margin: 0;
+            padding-left: 16px;
+        }
+
+        .help-panel li {
+            margin-bottom: 6px;
+        }
+
+        .help-panel strong {
+            color: #1e293b;
+        }
+
+        .shortcuts-hint {
+            position: absolute;
+            top: 16px;
+            right: 120px;
+            background: #3b82f6;
+            color: white;
+            padding: 6px 12px;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: 500;
+            opacity: 0.9;
+            display: none;
+        }
+
+        .shortcuts-hint.show {
+            display: block;
+            animation: pulse 2s infinite;
+        }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <div class="toolbar">
+            <h1>Flowchart Builder</h1>
+            
+            <div class="shape-palette">
+                <div class="shape-item rectangle" draggable="true" data-shape="rectangle" title="Process">
+                    Process
+                </div>
+                <div class="shape-item diamond" draggable="true" data-shape="diamond" title="Decision">
+                    <span>Decision</span>
+                </div>
+                <div class="shape-item circle" draggable="true" data-shape="circle" title="Terminal">
+                    Terminal
+                </div>
+                <div class="shape-item process" draggable="true" data-shape="process" title="Subprocess">
+                    Subprocess
+                </div>
+                <div class="shape-item database" draggable="true" data-shape="database" title="Database">
+                    Database
+                </div>
+            </div>
+
+            <div class="undo-redo">
+                <button class="history-btn" onclick="undo()" id="undoBtn" title="Undo (Ctrl+Z)" disabled>
+                    ↶
+                </button>
+                <button class="history-btn" onclick="redo()" id="redoBtn" title="Redo (Ctrl+Y)" disabled>
+                    ↷
+                </button>
+            </div>
+
+            <div class="toolbar-controls">
+                <button class="tool-btn primary" onclick="toggleConnectionMode()" id="connectBtn" title="Connection Mode (C)">
+                    Connect
+                </button>
+                <button class="tool-btn" onclick="toggleGroupMode()" id="groupBtn" title="Group Mode (G)">
+                    Group
+                </button>
+                <button class="tool-btn" onclick="toggleHelp()" id="helpBtn" title="Show Shortcuts (H)">
+                    Help
+                </button>
+                <button class="tool-btn success" onclick="exportDiagram()" title="Export (Ctrl+E)">
+                    Export
+                </button>
+                <button class="tool-btn danger" onclick="clearAll()" title="Clear All">
+                    Clear
+                </button>
+            </div>
+        </div>
+
+        <div class="main-content">
+            <div class="canvas-area">
+                <button class="grid-toggle" onclick="toggleGrid()" id="gridBtn">Grid: ON</button>
+                <div class="mode-indicator" id="modeIndicator"></div>
+                <div class="stats" id="stats">0 nodes, 0 connections</div>
+                <div class="shortcuts-hint" id="shortcutsHint">Press H for shortcuts</div>
+                
+                <div class="zoom-controls">
+                    <button class="zoom-btn" onclick="zoomIn()" title="Zoom In (+)">+</button>
+                    <div class="zoom-level" id="zoomLevel">100%</div>
+                    <button class="zoom-btn" onclick="zoomOut()" title="Zoom Out (-)">−</button>
+                    <button class="zoom-btn" onclick="resetZoom()" title="Reset Zoom (0)" style="font-size: 12px;">⌂</button>
+                </div>
+
+                <div class="help-panel" id="helpPanel">
+                    <h4>🎯 Quick Actions</h4>
+                    <ul>
+                        <li><strong>Double-click node:</strong> Quick rename</li>
+                        <li><strong>Shift+click nodes:</strong> Quick connect</li>
+                        <li><strong>Right-click nodes:</strong> Quick connect</li>
+                        <li><strong>Right-click node:</strong> Context menu</li>
+                        <li><strong>💬 icon:</strong> Node has hover details</li>
+                    </ul>
+                    <h4 style="margin-top: 12px;">⌨️ Navigation</h4>
+                    <ul>
+                        <li><strong>Mouse wheel:</strong> Zoom in/out</li>
+                        <li><strong>Ctrl+drag:</strong> Pan canvas</li>
+                        <li><strong>Delete:</strong> Delete selected</li>
+                        <li><strong>Escape:</strong> Cancel action</li>
+                    </ul>
+                    <h4 style="margin-top: 12px;">🛠️ Shortcuts</h4>
+                    <ul>
+                        <li><strong>C:</strong> Connection mode</li>
+                        <li><strong>G:</strong> Group mode</li>
+                        <li><strong>H:</strong> Toggle this help</li>
+                        <li><strong>Ctrl+Z/Y:</strong> Undo/Redo</li>
+                        <li><strong>Ctrl+E:</strong> Export diagram</li>
+                    </ul>
+                </div>
+                
+                <div class="canvas-container">
+                    <div class="canvas" id="canvas">
+                        <!-- Nodes and connections will be added here -->
+                    </div>
+                </div>
+            </div>
+
+            <div class="sidebar" id="sidebar">
+                <div class="sidebar-content">
+                    <button class="close-sidebar" onclick="closeSidebar()" title="Close">✕</button>
+                    
+                    <div class="panel">
+                        <h3>Node Properties</h3>
+                        <div class="form-group">
+                            <label>Text</label>
+                            <input type="text" class="form-control" id="nodeText" placeholder="Enter node text">
+                        </div>
+                        <div class="form-group">
+                            <label>Hover Details (Use • for bullets)</label>
+                            <textarea class="form-control" id="nodeDetails" placeholder="• Task 1&#10;• Task 2&#10;• Task 3" rows="4"></textarea>
+                        </div>
+                        <div class="form-group">
+                            <label>Description</label>
+                            <textarea class="form-control" id="nodeDesc" placeholder="Optional description" rows="3"></textarea>
+                        </div>
+                        <div class="form-group">
+                            <label>Color</label>
+                            <div class="color-picker" id="colorPicker">
+                                <div class="color-option" style="background: #3b82f6" data-color="blue"></div>
+                                <div class="color-option" style="background: #ef4444" data-color="red"></div>
+                                <div class="color-option" style="background: #10b981" data-color="green"></div>
+                                <div class="color-option" style="background: #0ea5e9" data-color="cyan"></div>
+                                <div class="color-option" style="background: #f59e0b" data-color="orange"></div>
+                                <div class="color-option" style="background: #8b5cf6" data-color="purple"></div>
+                            </div>
+                        </div>
+                        <button class="btn primary" onclick="updateNode()" id="updateBtn">
+                            Update Node
+                        </button>
+                        <button class="btn danger" onclick="deleteNode()" id="deleteBtn">
+                            Delete Node
+                        </button>
+                    </div>
+
+                    <div class="panel">
+                        <h3>Mermaid Code</h3>
+                        <div class="mermaid-code" id="mermaidOutput">
+                            Add nodes to generate code...
+                        </div>
+                        <button class="btn primary" onclick="copyCode()">
+                            Copy Code
+                        </button>
+                        <button class="btn" onclick="exportDiagram()">
+                            Export File
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="toast" id="toast"></div>
+    <div class="tooltip" id="tooltip"></div>
+
+    <script>
+        // Application state
+        let nodes = [];
+        let connections = [];
+        let groups = [];
+        let selectedNode = null;
+        let selectedNodes = [];
+        let history = [];
+        let historyIndex = -1;
+        let nodeCounter = 1;
+        let connectionMode = false;
+        let groupMode = false;
+        let connectionStart = null;
+        let tempLine = null;
+        let gridEnabled = true;
+        let draggedNode = null;
+        let startX, startY, nodeStartX, nodeStartY;
+        let currentContextMenu = null;
+        let zoomLevel = 1;
+        let panX = 0;
+        let panY = 0;
+        let isPanning = false;
+        let shiftPressed = false;
+        let shiftSelectedNode = null;
+        let ctrlPressed = false;
+        let helpVisible = false;
+        let rightClickNode = null;
+        let editingNode = null;
+
+        // Node colors
+        const nodeColors = {
+            blue: '#3b82f6',
+            red: '#ef4444',
+            green: '#10b981',
+            cyan: '#0ea5e9',
+            orange: '#f59e0b',
+            purple: '#8b5cf6'
+        };
+
+        // Initialize
+        const canvas = document.getElementById('canvas');
+        const canvasContainer = document.querySelector('.canvas-container');
+        const tooltip = document.getElementById('tooltip');
+        
+        // Show shortcuts hint on start
+        setTimeout(() => {
+            document.getElementById('shortcutsHint').classList.add('show');
+            setTimeout(() => {
+                document.getElementById('shortcutsHint').classList.remove('show');
+            }, 5000);
+        }, 1000);
+
+        // Keyboard event listeners
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Shift') {
+                shiftPressed = true;
+                updateModeIndicator();
+            }
+            if (e.key === 'Control' || e.key === 'Meta') {
+                ctrlPressed = true;
+            }
+            
+            // Don't process shortcuts if editing
+            if (editingNode) {
+                if (e.key === 'Enter') {
+                    finishEditingNode();
+                } else if (e.key === 'Escape') {
+                    cancelEditingNode();
+                }
+                return;
+            }
+            
+            // Keyboard shortcuts
+            if (!e.target.matches('input, textarea')) {
+                switch(e.key.toLowerCase()) {
+                    case 'c':
+                        if (!e.ctrlKey) toggleConnectionMode();
+                        break;
+                    case 'g':
+                        if (!e.ctrlKey) toggleGroupMode();
+                        break;
+                    case 'h':
+                        if (!e.ctrlKey) toggleHelp();
+                        break;
+                    case 'delete':
+                    case 'backspace':
+                        deleteSelectedNodes();
+                        break;
+                    case 'escape':
+                        cancelCurrentAction();
+                        break;
+                    case '+':
+                    case '=':
+                        zoomIn();
+                        break;
+                    case '-':
+                        zoomOut();
+                        break;
+                    case '0':
+                        resetZoom();
+                        break;
+                    case 'z':
+                        if (e.ctrlKey && !e.shiftKey) undo();
+                        break;
+                    case 'y':
+                        if (e.ctrlKey) redo();
+                        break;
+                    case 'e':
+                        if (e.ctrlKey) {
+                            e.preventDefault();
+                            exportDiagram();
+                        }
+                        break;
+                }
+            }
+        });
+
+        document.addEventListener('keyup', (e) => {
+            if (e.key === 'Shift') {
+                shiftPressed = false;
+                updateModeIndicator();
+            }
+            if (e.key === 'Control' || e.key === 'Meta') {
+                ctrlPressed = false;
+            }
+        });
+
+        function updateModeIndicator() {
+            const indicator = document.getElementById('modeIndicator');
+            
+            if (connectionMode) {
+                indicator.textContent = 'Connection Mode: Click two nodes to connect them';
+                indicator.className = 'mode-indicator show';
+            } else if (groupMode) {
+                indicator.textContent = 'Group Mode: Click nodes to select, then click Create Group';
+                indicator.className = 'mode-indicator show';
+            } else if (shiftPressed) {
+                indicator.textContent = 'Shift Mode: Click nodes to connect them directly';
+                indicator.className = 'mode-indicator show shift-mode';
+            } else if (rightClickNode) {
+                indicator.textContent = 'Right-click Mode: Click another node to connect';
+                indicator.className = 'mode-indicator show right-click-mode';
+            } else {
+                indicator.classList.remove('show');
+            }
+        }
+
+        function cancelCurrentAction() {
+            if (connectionMode) toggleConnectionMode();
+            if (groupMode) toggleGroupMode();
+            removeContextMenu();
+            if (shiftSelectedNode) {
+                document.getElementById(shiftSelectedNode.id).classList.remove('shift-selected');
+                shiftSelectedNode = null;
+            }
+            if (rightClickNode) {
+                document.getElementById(rightClickNode.id).classList.remove('shift-selected');
+                rightClickNode = null;
+                updateModeIndicator();
+            }
+            if (editingNode) {
+                cancelEditingNode();
+            }
+        }
+
+        function deleteSelectedNodes() {
+            if (selectedNode) {
+                deleteNodeById(selectedNode.id);
+            }
+        }
+
+        function toggleHelp() {
+            helpVisible = !helpVisible;
+            const helpPanel = document.getElementById('helpPanel');
+            const helpBtn = document.getElementById('helpBtn');
+            
+            if (helpVisible) {
+                helpPanel.classList.add('show');
+                helpBtn.classList.add('active');
+            } else {
+                helpPanel.classList.remove('show');
+                helpBtn.classList.remove('active');
+            }
+        }
+
+        // Zoom functionality
+        function zoomIn() {
+            zoomLevel = Math.min(zoomLevel * 1.2, 3);
+            updateZoom();
+        }
+
+        function zoomOut() {
+            zoomLevel = Math.max(zoomLevel / 1.2, 0.3);
+            updateZoom();
+        }
+
+        function resetZoom() {
+            zoomLevel = 1;
+            panX = 0;
+            panY = 0;
+            updateZoom();
+        }
+
+        function updateZoom() {
+            canvas.style.transform = `scale(${zoomLevel}) translate(${panX}px, ${panY}px)`;
+            document.getElementById('zoomLevel').textContent = Math.round(zoomLevel * 100) + '%';
+            
+            // Update grid size
+            const gridSize = 20 * zoomLevel;
+            canvas.style.backgroundSize = `${gridSize}px ${gridSize}px`;
+        }
+
+        // Mouse wheel zoom - no modifier key needed!
+        canvasContainer.addEventListener('wheel', (e) => {
+            e.preventDefault();
+            const delta = e.deltaY > 0 ? 0.9 : 1.1;
+            zoomLevel = Math.max(0.3, Math.min(3, zoomLevel * delta));
+            updateZoom();
+        });
+
+        // Pan functionality
+        canvasContainer.addEventListener('mousedown', (e) => {
+            if (e.target === canvas && (ctrlPressed || e.button === 1)) {
+                isPanning = true;
+                startX = e.clientX;
+                startY = e.clientY;
+                canvas.classList.add('panning');
+                e.preventDefault();
+            }
+        });
+
+        document.addEventListener('mousemove', (e) => {
+            if (isPanning) {
+                const deltaX = (e.clientX - startX) / zoomLevel;
+                const deltaY = (e.clientY - startY) / zoomLevel;
+                panX += deltaX;
+                panY += deltaY;
+                startX = e.clientX;
+                startY = e.clientY;
+                updateZoom();
+            }
+            
+            // Existing drag logic...
+            if (draggedNode) {
+                const deltaX = e.clientX - startX;
+                const deltaY = e.clientY - startY;
+                const newX = snapToGrid(nodeStartX + deltaX / zoomLevel);
+                const newY = snapToGrid(nodeStartY + deltaY / zoomLevel);
+                
+                draggedNode.x = Math.max(0, newX);
+                draggedNode.y = Math.max(0, newY);
+                
+                const nodeEl = document.getElementById(draggedNode.id);
+                nodeEl.style.left = draggedNode.x + 'px';
+                nodeEl.style.top = draggedNode.y + 'px';
+                
+                updateConnections();
+            }
+            
+            // Update temp connection line
+            if (connectionStart && tempLine) {
+                const rect = canvas.getBoundingClientRect();
+                const endX = (e.clientX - rect.left) / zoomLevel - panX;
+                const endY = (e.clientY - rect.top) / zoomLevel - panY;
+                
+                const startX = connectionStart.x + connectionStart.width / 2;
+                const startY = connectionStart.y + connectionStart.height / 2;
+                
+                const deltaX = endX - startX;
+                const deltaY = endY - startY;
+                const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
+                const angle = Math.atan2(deltaY, deltaX) * 180 / Math.PI;
+                
+                tempLine.style.left = startX + 'px';
+                tempLine.style.top = startY + 'px';
+                tempLine.style.width = distance + 'px';
+                tempLine.style.transform = `rotate(${angle}deg)`;
+            }
+        });
+
+        document.addEventListener('mouseup', (e) => {
+            if (isPanning) {
+                isPanning = false;
+                canvas.classList.remove('panning');
+            }
+            
+            if (draggedNode) {
+                saveState();
+                draggedNode = null;
+                canvas.classList.remove('grabbing');
+            }
+        });
+
+        // Save state for undo/redo
+        function saveState() {
+            const state = {
+                nodes: JSON.parse(JSON.stringify(nodes)),
+                connections: JSON.parse(JSON.stringify(connections)),
+                groups: JSON.parse(JSON.stringify(groups))
+            };
+            
+            history = history.slice(0, historyIndex + 1);
+            history.push(state);
+            historyIndex++;
+            
+            if (history.length > 50) {
+                history.shift();
+                historyIndex--;
+            }
+            
+            updateHistoryButtons();
+        }
+
+        function updateHistoryButtons() {
+            document.getElementById('undoBtn').disabled = historyIndex <= 0;
+            document.getElementById('redoBtn').disabled = historyIndex >= history.length - 1;
+        }
+
+        function updateStats() {
+            document.getElementById('stats').textContent = `${nodes.length} nodes, ${connections.length} connections`;
+        }
+
+        function undo() {
+            if (historyIndex > 0) {
+                historyIndex--;
+                restoreState(history[historyIndex]);
+            }
+        }
+
+        function redo() {
+            if (historyIndex < history.length - 1) {
+                historyIndex++;
+                restoreState(history[historyIndex]);
+            }
+        }
+
+        function restoreState(state) {
+            nodes = JSON.parse(JSON.stringify(state.nodes));
+            connections = JSON.parse(JSON.stringify(state.connections));
+            groups = JSON.parse(JSON.stringify(state.groups));
+            
+            renderAll();
+            updateMermaidCode();
+            updateHistoryButtons();
+            updateStats();
+        }
+
+        // Function to remove any existing context menu
+        function removeContextMenu() {
+            if (currentContextMenu) {
+                currentContextMenu.remove();
+                currentContextMenu = null;
+            }
+        }
+
+        // Enhanced tooltip functionality
+        function showTooltip(x, y, node) {
+            if (!node.details && !node.description) return;
+            
+            let html = `<h4>${node.text}</h4>`;
+            
+            if (node.details) {
+                html += formatDetails(node.details);
+            }
+            
+            if (node.description) {
+                html += `<div class="description">${node.description}</div>`;
+            }
+            
+            tooltip.innerHTML = html;
+            tooltip.style.left = x + 15 + 'px';
+            tooltip.style.top = y - 10 + 'px';
+            tooltip.classList.add('show');
+            
+            // Adjust position if tooltip goes off screen
+            setTimeout(() => {
+                const rect = tooltip.getBoundingClientRect();
+                if (rect.right > window.innerWidth) {
+                    tooltip.style.left = (x - rect.width - 15) + 'px';
+                }
+                if (rect.top < 0) {
+                    tooltip.style.top = (y + 20) + 'px';
+                }
+            }, 0);
+        }
+
+        function hideTooltip() {
+            tooltip.classList.remove('show');
+        }
+
+        function formatDetails(details) {
+            if (!details) return '';
+            
+            // Convert bullet points to HTML list
+            const lines = details.split('\n').filter(line => line.trim());
+            const bulletLines = lines.filter(line => line.trim().startsWith('•'));
+            const regularLines = lines.filter(line => !line.trim().startsWith('•'));
+            
+            let html = '';
+            
+            if (regularLines.length > 0) {
+                html += regularLines.join('<br>');
+            }
+            
+            if (bulletLines.length > 0) {
+                if (regularLines.length > 0) html += '<br>';
+                html += '<ul>';
+                bulletLines.forEach(line => {
+                    html += `<li>${line.replace(/^•\s*/, '')}</li>`;
+                });
+                html += '</ul>';
+            }
+            
+            return html;
+        }
+
+        // Drag and drop
+        document.querySelectorAll('.shape-item').forEach(item => {
+            item.addEventListener('dragstart', (e) => {
+                e.dataTransfer.setData('text/plain', e.target.dataset.shape);
+            });
+        });
+
+        canvas.addEventListener('dragover', (e) => e.preventDefault());
+        canvas.addEventListener('drop', (e) => {
+            e.preventDefault();
+            const shape = e.dataTransfer.getData('text/plain');
+            const rect = canvas.getBoundingClientRect();
+            const x = (e.clientX - rect.left) / zoomLevel - panX;
+            const y = (e.clientY - rect.top) / zoomLevel - panY;
+            
+            createNode(shape, snapToGrid(x), snapToGrid(y));
+        });
+
+        function snapToGrid(value) {
+            return gridEnabled ? Math.round(value / 20) * 20 : value;
+        }
+
+        function showContextMenu(x, y, node) {
+            // Remove any existing context menu first
+            removeContextMenu();
+            
+            const menu = document.createElement('div');
+            menu.className = 'context-menu';
+            currentContextMenu = menu;
+            
+            // Create menu items
+            const menuItems = [
+                {
+                    icon: '✏️',
+                    text: 'Edit Text',
+                    action: () => editNodeInline(node.id),
+                    class: ''
+                },
+                {
+                    icon: '💬',
+                    text: 'Add Details',
+                    action: () => editNodeDetails(node.id),
+                    class: ''
+                },
+                {
+                    icon: '⚙️',
+                    text: 'Properties',
+                    action: () => openNodeEditor(node),
+                    class: ''
+                },
+                {
+                    icon: '🔗',
+                    text: 'Connect to...',
+                    action: () => startRightClickConnection(node),
+                    class: ''
+                },
+                {
+                    icon: '📋',
+                    text: 'Duplicate',
+                    action: () => duplicateNode(node.id),
+                    class: ''
+                },
+                {
+                    icon: '🎨',
+                    text: 'Change Color',
+                    action: () => changeNodeColor(node.id),
+                    class: ''
+                },
+                {
+                    icon: '🗑️',
+                    text: 'Delete',
+                    action: () => deleteNodeById(node.id),
+                    class: 'danger'
+                }
+            ];
+
+            menuItems.forEach(item => {
+                const menuItem = document.createElement('div');
+                menuItem.className = `context-menu-item ${item.class}`;
+                menuItem.innerHTML = `${item.icon} ${item.text}`;
+                
+                menuItem.addEventListener('mousedown', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    removeContextMenu();
+                    item.action();
+                });
+                
+                menu.appendChild(menuItem);
+            });
+            
+            document.body.appendChild(menu);
+            
+            // Position menu
+            menu.style.left = x + 'px';
+            menu.style.top = y + 'px';
+            
+            // Adjust position if menu goes off screen
+            const rect = menu.getBoundingClientRect();
+            if (rect.right > window.innerWidth) {
+                menu.style.left = (x - rect.width) + 'px';
+            }
+            if (rect.bottom > window.innerHeight) {
+                menu.style.top = (y - rect.height) + 'px';
+            }
+        }
+
+        function startRightClickConnection(node) {
+            rightClickNode = node;
+            document.getElementById(node.id).classList.add('shift-selected');
+            updateModeIndicator();
+            showToast(`Selected "${node.text}". Click another node to connect.`);
+        }
+
+        function editNodeInline(nodeId) {
+            const node = nodes.find(n => n.id === nodeId);
+            if (!node) return;
+            
+            const nodeEl = document.getElementById(node.id);
+            const contentEl = nodeEl.querySelector('.node-content') || nodeEl;
+            
+            // Store original content
+            editingNode = {
+                node: node,
+                element: contentEl,
+                originalText: node.text
+            };
+            
+            // Make editable
+            contentEl.contentEditable = true;
+            contentEl.focus();
+            nodeEl.classList.add('editing');
+            
+            // Select all text
+            const range = document.createRange();
+            range.selectNodeContents(contentEl);
+            const sel = window.getSelection();
+            sel.removeAllRanges();
+            sel.addRange(range);
+            
+            // Prevent node dragging while editing
+            nodeEl.style.cursor = 'text';
+        }
+
+        function finishEditingNode() {
+            if (!editingNode) return;
+            
+            const newText = editingNode.element.textContent.trim();
+            if (newText && newText !== editingNode.originalText) {
+                saveState();
+                editingNode.node.text = newText;
+                updateMermaidCode();
+                showToast('Node text updated!');
+            }
+            
+            // Reset editing state
+            editingNode.element.contentEditable = false;
+            document.getElementById(editingNode.node.id).classList.remove('editing');
+            editingNode = null;
+        }
+
+        function cancelEditingNode() {
+            if (!editingNode) return;
+            
+            // Restore original text
+            editingNode.element.textContent = editingNode.originalText;
+            editingNode.element.contentEditable = false;
+            document.getElementById(editingNode.node.id).classList.remove('editing');
+            editingNode = null;
+        }
+
+        function editNodeDetails(nodeId) {
+            const node = nodes.find(n => n.id === nodeId);
+            if (node) {
+                openNodeEditor(node);
+                // Focus on details field
+                setTimeout(() => {
+                    document.getElementById('nodeDetails').focus();
+                }, 100);
+            }
+        }
+
+        function updateNodeDisplay(node) {
+            const nodeEl = document.getElementById(node.id);
+            const contentEl = nodeEl.querySelector('.node-content');
+            
+            if (contentEl) {
+                contentEl.textContent = node.text;
+            } else {
+                nodeEl.textContent = node.text;
+            }
+            
+            // Update has-details indicator
+            if (node.details) {
+                nodeEl.classList.add('has-details');
+            } else {
+                nodeEl.classList.remove('has-details');
+            }
+        }
+
+        function duplicateNode(nodeId) {
+            const node = nodes.find(n => n.id === nodeId);
+            if (node) {
+                saveState();
+                const newNode = {
+                    ...node,
+                    id: `node${nodeCounter++}`,
+                    x: node.x + 50,
+                    y: node.y + 50,
+                    text: node.text + ' Copy'
+                };
+                nodes.push(newNode);
+                renderNode(newNode);
+                updateMermaidCode();
+                updateStats();
+                showToast('Node duplicated!');
+            }
+        }
+
+        function changeNodeColor(nodeId) {
+            const node = nodes.find(n => n.id === nodeId);
+            if (node) {
+                const colors = ['blue', 'red', 'green', 'cyan', 'orange', 'purple'];
+                const currentIndex = colors.indexOf(node.color);
+                const nextIndex = (currentIndex + 1) % colors.length;
+                
+                saveState();
+                node.color = colors[nextIndex];
+                document.getElementById(node.id).style.background = nodeColors[node.color];
+                showToast(`Node color changed to ${colors[nextIndex]}!`);
+            }
+        }
+
+        function deleteNodeById(nodeId) {
+            if (confirm('Are you sure you want to delete this node?')) {
+                saveState();
+                
+                // Remove from arrays
+                nodes = nodes.filter(n => n.id !== nodeId);
+                connections = connections.filter(c => 
+                    c.from !== nodeId && c.to !== nodeId);
+                
+                // Remove from DOM
+                const nodeElement = document.getElementById(nodeId);
+                if (nodeElement) {
+                    nodeElement.remove();
+                }
+                
+                // Close sidebar if this node was selected
+                if (selectedNode && selectedNode.id === nodeId) {
+                    closeSidebar();
+                }
+                
+                updateConnections();
+                updateMermaidCode();
+                updateStats();
+                showToast('Node deleted!');
+            }
+        }
+
+        function toggleGrid() {
+            gridEnabled = !gridEnabled;
+            document.getElementById('gridBtn').textContent = `Grid: ${gridEnabled ? 'ON' : 'OFF'}`;
+            
+            if (gridEnabled) {
+                const gridSize = 20 * zoomLevel;
+                canvas.style.backgroundImage = 'radial-gradient(circle at 1px 1px, #cbd5e1 1px, transparent 0)';
+                canvas.style.backgroundSize = `${gridSize}px ${gridSize}px`;
+            } else {
+                canvas.style.backgroundImage = 'none';
+            }
+            
+            showToast(`Grid ${gridEnabled ? 'enabled' : 'disabled'}`);
+        }
+
+        function createNode(shape, x, y) {
+            saveState();
+            
+            const node = {
+                id: `node${nodeCounter++}`,
+                shape: shape,
+                text: `${shape.charAt(0).toUpperCase() + shape.slice(1)} ${nodeCounter - 1}`,
+                description: '',
+                details: '',
+                x: x,
+                y: y,
+                color: 'blue',
+                width: 120,
+                height: 60
+            };
+            
+            nodes.push(node);
+            renderNode(node);
+            updateMermaidCode();
+            updateStats();
+            showToast('Node created! Double-click to rename, hover for details.');
+        }
+
+        function renderNode(node) {
+            const nodeEl = document.createElement('div');
+            nodeEl.className = `node ${node.shape}`;
+            nodeEl.id = node.id;
+            nodeEl.style.left = node.x + 'px';
+            nodeEl.style.top = node.y + 'px';
+            nodeEl.style.width = node.width + 'px';
+            nodeEl.style.height = node.height + 'px';
+            nodeEl.style.background = nodeColors[node.color];
+            
+            // Create content element
+            const contentEl = document.createElement('div');
+            contentEl.className = 'node-content';
+            contentEl.textContent = node.text;
+            nodeEl.appendChild(contentEl);
+            
+            // Add has-details indicator
+            if (node.details) {
+                nodeEl.classList.add('has-details');
+            }
+
+            // Event listeners
+            nodeEl.addEventListener('click', (e) => {
+                e.stopPropagation();
+                handleNodeClick(node, e);
+            });
+
+            // Double click to rename
+            nodeEl.addEventListener('dblclick', (e) => {
+                e.stopPropagation();
+                editNodeInline(node.id);
+            });
+
+            // Hover tooltip
+            nodeEl.addEventListener('mouseenter', (e) => {
+                if (node.details || node.description) {
+                    showTooltip(e.clientX, e.clientY, node);
+                }
+            });
+
+            nodeEl.addEventListener('mouseleave', () => {
+                hideTooltip();
+            });
+
+            nodeEl.addEventListener('mousemove', (e) => {
+                if ((node.details || node.description) && tooltip.classList.contains('show')) {
+                    tooltip.style.left = e.clientX + 15 + 'px';
+                    tooltip.style.top = e.clientY - 10 + 'px';
+                }
+            });
+
+            // Right click context menu
+            nodeEl.addEventListener('contextmenu', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                // Check if we're in right-click connection mode
+                if (rightClickNode && rightClickNode.id !== node.id) {
+                    handleRightClickConnection(node);
+                } else {
+                    showContextMenu(e.clientX, e.clientY, node);
+                }
+            });
+
+            // Drag functionality
+            nodeEl.addEventListener('mousedown', (e) => {
+                if (connectionMode || groupMode || e.button === 2 || editingNode) return;
+                
+                draggedNode = node;
+                startX = e.clientX;
+                startY = e.clientY;
+                nodeStartX = node.x;
+                nodeStartY = node.y;
+                
+                canvas.classList.add('grabbing');
+                e.preventDefault();
+            });
+
+            canvas.appendChild(nodeEl);
+        }
+
+        // Global event listeners
+        document.addEventListener('click', (e) => {
+            // Remove context menu when clicking elsewhere
+            if (currentContextMenu && !currentContextMenu.contains(e.target)) {
+                removeContextMenu();
+            }
+            
+            // Hide tooltip when clicking elsewhere
+            if (!e.target.closest('.node')) {
+                hideTooltip();
+            }
+            
+            // Finish editing if clicking outside
+            if (editingNode && !e.target.closest('.node-content')) {
+                finishEditingNode();
+            }
+        });
+
+        function handleNodeClick(node, e) {
+            if (editingNode) return;
+            
+            if (rightClickNode && rightClickNode.id !== node.id) {
+                handleRightClickConnection(node);
+            } else if (shiftPressed && !connectionMode && !groupMode) {
+                handleShiftClick(node);
+            } else if (connectionMode) {
+                handleConnection(node);
+            } else if (groupMode) {
+                toggleNodeSelection(node);
+            } else {
+                selectNode(node);
+            }
+        }
+
+        function handleRightClickConnection(node) {
+            const connection = {
+                from: rightClickNode.id,
+                to: node.id
+            };
+            
+            const exists = connections.some(c => 
+                c.from === connection.from && c.to === connection.to);
+            
+            if (!exists) {
+                saveState();
+                connections.push(connection);
+                updateConnections();
+                updateMermaidCode();
+                updateStats();
+                showToast(`Connected "${rightClickNode.text}" → "${node.text}"`);
+            } else {
+                showToast('Connection already exists!');
+            }
+            
+            // Clear right-click selection
+            document.getElementById(rightClickNode.id).classList.remove('shift-selected');
+            rightClickNode = null;
+            updateModeIndicator();
+        }
+
+        function handleShiftClick(node) {
+            if (!shiftSelectedNode) {
+                // First node selection
+                shiftSelectedNode = node;
+                document.getElementById(node.id).classList.add('shift-selected');
+                showToast(`Selected "${node.text}". Shift+click another node to connect.`);
+            } else if (shiftSelectedNode.id !== node.id) {
+                // Second node - create connection
+                const connection = {
+                    from: shiftSelectedNode.id,
+                    to: node.id
+                };
+                
+                const exists = connections.some(c => 
+                    c.from === connection.from && c.to === connection.to);
+                
+                if (!exists) {
+                    saveState();
+                    connections.push(connection);
+                    updateConnections();
+                    updateMermaidCode();
+                    updateStats();
+                    showToast(`Connected "${shiftSelectedNode.text}" → "${node.text}"`);
+                } else {
+                    showToast('Connection already exists!');
+                }
+                
+                // Clear shift selection
+                document.getElementById(shiftSelectedNode.id).classList.remove('shift-selected');
+                shiftSelectedNode = null;
+            }
+        }
+
+        function selectNode(node) {
+            // Clear previous selection
+            document.querySelectorAll('.node').forEach(el => el.classList.remove('selected'));
+            
+            selectedNode = node;
+            document.getElementById(node.id).classList.add('selected');
+        }
+
+        function openNodeEditor(node) {
+            selectedNode = node;
+            selectNode(node);
+            
+            // Open sidebar
+            document.getElementById('sidebar').classList.add('open');
+            
+            // Populate form
+            document.getElementById('nodeText').value = node.text;
+            document.getElementById('nodeDetails').value = node.details || '';
+            document.getElementById('nodeDesc').value = node.description || '';
+            
+            // Update color picker
+            document.querySelectorAll('.color-option').forEach(option => {
+                option.classList.toggle('selected', option.dataset.color === node.color);
+            });
+        }
+
+        function closeSidebar() {
+            document.getElementById('sidebar').classList.remove('open');
+            selectedNode = null;
+            document.querySelectorAll('.node').forEach(el => el.classList.remove('selected'));
+        }
+
+        function toggleNodeSelection(node) {
+            const nodeEl = document.getElementById(node.id);
+            const index = selectedNodes.indexOf(node);
+            
+            if (index > -1) {
+                selectedNodes.splice(index, 1);
+                nodeEl.classList.remove('selected');
+            } else {
+                selectedNodes.push(node);
+                nodeEl.classList.add('selected');
+            }
+            
+            showToast(`${selectedNodes.length} nodes selected`);
+        }
+
+        function handleConnection(node) {
+            if (!connectionStart) {
+                connectionStart = node;
+                document.getElementById(node.id).classList.add('connecting');
+                
+                // Create temp line
+                tempLine = document.createElement('div');
+                tempLine.className = 'temp-line';
+                canvas.appendChild(tempLine);
+                
+                showToast(`Selected "${node.text}". Click another node to connect.`);
+            } else if (connectionStart.id !== node.id) {
+                // Create connection
+                const connection = {
+                    from: connectionStart.id,
+                    to: node.id
+                };
+                
+                const exists = connections.some(c => 
+                    c.from === connection.from && c.to === connection.to);
+                
+                if (!exists) {
+                    saveState();
+                    connections.push(connection);
+                    updateConnections();
+                    updateMermaidCode();
+                    updateStats();
+                    showToast(`Connected "${connectionStart.text}" → "${node.text}"`);
+                } else {
+                    showToast('Connection already exists!');
+                }
+                
+                // Clean up
+                document.getElementById(connectionStart.id).classList.remove('connecting');
+                if (tempLine) {
+                    tempLine.remove();
+                    tempLine = null;
+                }
+                connectionStart = null;
+            }
+        }
+
+        function updateNode() {
+            if (!selectedNode) return;
+            
+            saveState();
+            const newText = document.getElementById('nodeText').value.trim();
+            const newDetails = document.getElementById('nodeDetails').value.trim();
+            const newDesc = document.getElementById('nodeDesc').value.trim();
+            
+            if (newText) {
+                selectedNode.text = newText;
+                selectedNode.details = newDetails;
+                selectedNode.description = newDesc;
+                
+                updateNodeDisplay(selectedNode);
+                updateMermaidCode();
+                showToast('Node updated!');
+            }
+        }
+
+        function deleteNode() {
+            if (!selectedNode) return;
+            deleteNodeById(selectedNode.id);
+        }
+
+        function toggleConnectionMode() {
+            connectionMode = !connectionMode;
+            groupMode = false;
+            
+            const connectBtn = document.getElementById('connectBtn');
+            const groupBtn = document.getElementById('groupBtn');
+            
+            if (connectionMode) {
+                connectBtn.classList.add('active');
+                connectBtn.textContent = 'Exit Connect';
+                canvas.classList.add('connection-mode');
+                showToast('Connection mode active. Click two nodes to connect them.');
+            } else {
+                connectBtn.classList.remove('active');
+                connectBtn.textContent = 'Connect';
+                canvas.classList.remove('connection-mode');
+                
+                // Clean up
+                if (connectionStart) {
+                    document.getElementById(connectionStart.id).classList.remove('connecting');
+                    connectionStart = null;
+                }
+                if (tempLine) {
+                    tempLine.remove();
+                    tempLine = null;
+                }
+            }
+            
+            groupBtn.classList.remove('active');
+            groupBtn.textContent = 'Group';
+            updateModeIndicator();
+        }
+
+        function toggleGroupMode() {
+            groupMode = !groupMode;
+            connectionMode = false;
+            
+            const groupBtn = document.getElementById('groupBtn');
+            const connectBtn = document.getElementById('connectBtn');
+            
+            if (groupMode) {
+                groupBtn.classList.add('active');
+                groupBtn.textContent = 'Create Group';
+                showToast('Group mode active. Click nodes to select them.');
+            } else {
+                if (selectedNodes.length > 1) {
+                    createGroup();
+                }
+                groupBtn.classList.remove('active');
+                groupBtn.textContent = 'Group';
+            }
+            
+            connectBtn.classList.remove('active');
+            connectBtn.textContent = 'Connect';
+            canvas.classList.remove('connection-mode');
+            updateModeIndicator();
+        }
+
+        function createGroup() {
+            if (selectedNodes.length < 2) {
+                showToast('Select at least 2 nodes to create a group');
+                return;
+            }
+            
+            saveState();
+            
+            // Calculate group bounds
+            let minX = Math.min(...selectedNodes.map(n => n.x));
+            let minY = Math.min(...selectedNodes.map(n => n.y));
+            let maxX = Math.max(...selectedNodes.map(n => n.x + n.width));
+            let maxY = Math.max(...selectedNodes.map(n => n.y + n.height));
+            
+            const group = {
+                id: `group${Date.now()}`,
+                x: minX - 20,
+                y: minY - 20,
+                width: maxX - minX + 40,
+                height: maxY - minY + 40,
+                nodes: selectedNodes.map(n => n.id)
+            };
+            
+            groups.push(group);
+            renderGroup(group);
+            showToast(`Group created with ${selectedNodes.length} nodes`);
+            
+            // Clear selection
+            selectedNodes = [];
+            document.querySelectorAll('.node').forEach(el => el.classList.remove('selected'));
+        }
+
+        function renderGroup(group) {
+            const groupEl = document.createElement('div');
+            groupEl.className = 'group-box';
+            groupEl.id = group.id;
+            groupEl.style.left = group.x + 'px';
+            groupEl.style.top = group.y + 'px';
+            groupEl.style.width = group.width + 'px';
+            groupEl.style.height = group.height + 'px';
+            
+            canvas.appendChild(groupEl);
+        }
+
+        function updateConnections() {
+            // Remove existing connections
+            document.querySelectorAll('.connection').forEach(el => el.remove());
+            
+            connections.forEach(conn => {
+                const fromNode = nodes.find(n => n.id === conn.from);
+                const toNode = nodes.find(n => n.id === conn.to);
+                
+                if (fromNode && toNode) {
+                    drawConnection(fromNode, toNode);
+                }
+            });
+        }
+
+        function drawConnection(fromNode, toNode) {
+            const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+            svg.classList.add('connection');
+            
+            const startX = fromNode.x + fromNode.width / 2;
+            const startY = fromNode.y + fromNode.height / 2;
+            const endX = toNode.x + toNode.width / 2;
+            const endY = toNode.y + toNode.height / 2;
+            
+            // Calculate control points for curved line
+            const controlX1 = startX + (endX - startX) * 0.3;
+            const controlY1 = startY;
+            const controlX2 = endX - (endX - startX) * 0.3;
+            const controlY2 = endY;
+            
+            const minX = Math.min(startX, endX, controlX1, controlX2) - 20;
+            const minY = Math.min(startY, endY, controlY1, controlY2) - 20;
+            const maxX = Math.max(startX, endX, controlX1, controlX2) + 20;
+            const maxY = Math.max(startY, endY, controlY1, controlY2) + 20;
+            
+            svg.style.left = minX + 'px';
+            svg.style.top = minY + 'px';
+            svg.style.width = (maxX - minX) + 'px';
+            svg.style.height = (maxY - minY) + 'px';
+            
+            // Create path
+            const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+            const pathData = `M ${startX - minX} ${startY - minY} C ${controlX1 - minX} ${controlY1 - minY}, ${controlX2 - minX} ${controlY2 - minY}, ${endX - minX} ${endY - minY}`;
+            path.setAttribute('d', pathData);
+            path.classList.add('connection-path');
+            
+            // Create arrow
+            const arrow = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
+            const arrowSize = 6;
+            const angle = Math.atan2(endY - controlY2, endX - controlX2);
+            const arrowX = endX - minX - Math.cos(angle) * 8;
+            const arrowY = endY - minY - Math.sin(angle) * 8;
+            
+            const arrowPoints = [
+                [arrowX + Math.cos(angle) * arrowSize, arrowY + Math.sin(angle) * arrowSize],
+                [arrowX + Math.cos(angle + 2.6) * arrowSize, arrowY + Math.sin(angle + 2.6) * arrowSize],
+                [arrowX + Math.cos(angle - 2.6) * arrowSize, arrowY + Math.sin(angle - 2.6) * arrowSize]
+            ].map(p => p.join(',')).join(' ');
+            
+            arrow.setAttribute('points', arrowPoints);
+            arrow.classList.add('connection-arrow');
+            
+            svg.appendChild(path);
+            svg.appendChild(arrow);
+            canvas.appendChild(svg);
+        }
+
+        function updateMermaidCode() {
+            let code = 'flowchart TD\n';
+            
+            nodes.forEach(node => {
+                const cleanId = node.id.replace(/[^a-zA-Z0-9]/g, '');
+                const cleanText = node.text.replace(/"/g, '\\"');
+                
+                switch (node.shape) {
+                    case 'diamond':
+                        code += `    ${cleanId}{${cleanText}}\n`;
+                        break;
+                    case 'circle':
+                        code += `    ${cleanId}((${cleanText}))\n`;
+                        break;
+                    case 'database':
+                        code += `    ${cleanId}[(${cleanText})]\n`;
+                        break;
+                    default:
+                        code += `    ${cleanId}[${cleanText}]\n`;
+                }
+            });
+            
+            connections.forEach(conn => {
+                const fromId = conn.from.replace(/[^a-zA-Z0-9]/g, '');
+                const toId = conn.to.replace(/[^a-zA-Z0-9]/g, '');
+                code += `    ${fromId} --> ${toId}\n`;
+            });
+            
+            document.getElementById('mermaidOutput').textContent = code;
+        }
+
+        function renderAll() {
+            canvas.innerHTML = '';
+            nodes.forEach(renderNode);
+            groups.forEach(renderGroup);
+            updateConnections();
+        }
+
+        function copyCode() {
+            const code = document.getElementById('mermaidOutput').textContent;
+            navigator.clipboard.writeText(code).then(() => {
+                showToast('Mermaid code copied to clipboard!');
+            });
+        }
+
+        function exportDiagram() {
+            const code = document.getElementById('mermaidOutput').textContent;
+            const blob = new Blob([code], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `flowchart-${Date.now()}.mmd`;
+            a.click();
+            URL.revokeObjectURL(url);
+            showToast('Diagram exported successfully!');
+        }
+
+        function clearAll() {
+            if (confirm('Are you sure you want to clear everything? This cannot be undone.')) {
+                saveState();
+                nodes = [];
+                connections = [];
+                groups = [];
+                selectedNode = null;
+                selectedNodes = [];
+                nodeCounter = 1;
+                
+                canvas.innerHTML = '';
+                closeSidebar();
+                updateMermaidCode();
+                updateStats();
+                showToast('Canvas cleared!');
+            }
+        }
+
+        function showToast(message) {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.classList.add('show');
+            
+            setTimeout(() => {
+                toast.classList.remove('show');
+            }, 3000);
+        }
+
+        // Color picker events
+        document.querySelectorAll('.color-option').forEach(option => {
+            option.addEventListener('click', () => {
+                if (selectedNode) {
+                    saveState();
+                    selectedNode.color = option.dataset.color;
+                    document.getElementById(selectedNode.id).style.background = nodeColors[selectedNode.color];
+                    
+                    document.querySelectorAll('.color-option').forEach(opt => opt.classList.remove('selected'));
+                    option.classList.add('selected');
+                    
+                    showToast('Node color updated!');
+                }
+            });
+        });
+
+        // Canvas click to deselect
+        canvas.addEventListener('click', (e) => {
+            if (e.target === canvas) {
+                closeSidebar();
+                
+                if (connectionMode) {
+                    if (connectionStart) {
+                        document.getElementById(connectionStart.id).classList.remove('connecting');
+                        connectionStart = null;
+                    }
+                    if (tempLine) {
+                        tempLine.remove();
+                        tempLine = null;
+                    }
+                }
+                
+                // Clear shift selection
+                if (shiftSelectedNode) {
+                    document.getElementById(shiftSelectedNode.id).classList.remove('shift-selected');
+                    shiftSelectedNode = null;
+                }
+                
+                // Clear right-click selection
+                if (rightClickNode) {
+                    document.getElementById(rightClickNode.id).classList.remove('shift-selected');
+                    rightClickNode = null;
+                    updateModeIndicator();
+                }
+            }
+        });
+
+        // Initial state
+        saveState();
+        updateMermaidCode();
+        updateHistoryButtons();
+        updateStats();
+        updateZoom();
+    </script>
+</body>
+</html>
