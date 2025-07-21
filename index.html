@@ -176,8 +176,7 @@
             width: 100%;
             height: 100%;
             position: relative;
-            background-image: 
-                radial-gradient(circle at 1px 1px, #cbd5e1 1px, transparent 0);
+            background-image: radial-gradient(circle at 1px 1px, #cbd5e1 1px, transparent 0);
             background-size: 20px 20px;
             cursor: default;
             transform-origin: 0 0;
@@ -986,7 +985,6 @@
 
     <div class="toast" id="toast"></div>
     <div class="tooltip" id="tooltip"></div>
-
     <script>
         // Application state
         let nodes = [];
@@ -1015,6 +1013,12 @@
         let helpVisible = false;
         let rightClickNode = null;
         let editingNode = null;
+        let lastUsedShape = 'rectangle';
+        let altSelecting = false;
+        let selectionStartX, selectionStartY;
+        let selectionRectEl = null;
+        let selectedConnection = null;
+        let selectedConnectionEl = null;
 
         // Node colors
         const nodeColors = {
@@ -1073,7 +1077,11 @@
                         break;
                     case 'delete':
                     case 'backspace':
-                        deleteSelectedNodes();
+                        if (selectedConnection) {
+                            deleteSelectedConnection();
+                        } else {
+                            deleteSelectedNodes();
+                        }
                         break;
                     case 'escape':
                         cancelCurrentAction();
@@ -1098,6 +1106,12 @@
                         if (e.ctrlKey) {
                             e.preventDefault();
                             exportDiagram();
+                        }
+                        break;
+                    case 'r':
+                        if (!e.ctrlKey && selectedConnection) {
+                            e.preventDefault();
+                            reverseSelectedConnection();
                         }
                         break;
                 }
@@ -1149,6 +1163,13 @@
             }
             if (editingNode) {
                 cancelEditingNode();
+            }
+            if (altSelecting) {
+                altSelecting = false;
+                if (selectionRectEl) {
+                    selectionRectEl.remove();
+                    selectionRectEl = null;
+                }
             }
         }
 
@@ -1207,8 +1228,27 @@
             updateZoom();
         });
 
-        // Pan functionality
+        // Pan and selection functionality
         canvasContainer.addEventListener('mousedown', (e) => {
+            if (e.target === canvas && e.altKey && e.button === 0) {
+                if (connectionMode) toggleConnectionMode();
+                const rect = canvas.getBoundingClientRect();
+                altSelecting = true;
+                selectionStartX = (e.clientX - rect.left) / zoomLevel - panX;
+                selectionStartY = (e.clientY - rect.top) / zoomLevel - panY;
+                selectionRectEl = document.createElement('div');
+                selectionRectEl.className = 'selection-rect';
+                selectionRectEl.style.position = 'absolute';
+                selectionRectEl.style.border = '1px dashed #3b82f6';
+                selectionRectEl.style.background = 'rgba(59, 130, 246, 0.1)';
+                selectionRectEl.style.left = selectionStartX + 'px';
+                selectionRectEl.style.top = selectionStartY + 'px';
+                selectionRectEl.style.width = '0px';
+                selectionRectEl.style.height = '0px';
+                canvas.appendChild(selectionRectEl);
+                e.preventDefault();
+                return;
+            }
             if (e.target === canvas && (ctrlPressed || e.button === 1)) {
                 isPanning = true;
                 startX = e.clientX;
@@ -1229,6 +1269,20 @@
                 updateZoom();
             }
             
+            if (altSelecting && selectionRectEl) {
+                const rect = canvas.getBoundingClientRect();
+                const currX = (e.clientX - rect.left) / zoomLevel - panX;
+                const currY = (e.clientY - rect.top) / zoomLevel - panY;
+                const selX = Math.min(selectionStartX, currX);
+                const selY = Math.min(selectionStartY, currY);
+                const selW = Math.abs(currX - selectionStartX);
+                const selH = Math.abs(currY - selectionStartY);
+                selectionRectEl.style.left = selX + 'px';
+                selectionRectEl.style.top = selY + 'px';
+                selectionRectEl.style.width = selW + 'px';
+                selectionRectEl.style.height = selH + 'px';
+            }
+
             // Existing drag logic...
             if (draggedNode) {
                 const deltaX = e.clientX - startX;
@@ -1277,6 +1331,38 @@
                 saveState();
                 draggedNode = null;
                 canvas.classList.remove('grabbing');
+            }
+
+            if (altSelecting) {
+                altSelecting = false;
+                if (selectionRectEl) {
+                    const rect = canvas.getBoundingClientRect();
+                    const endX = (e.clientX - rect.left) / zoomLevel - panX;
+                    const endY = (e.clientY - rect.top) / zoomLevel - panY;
+                    const selX = Math.min(selectionStartX, endX);
+                    const selY = Math.min(selectionStartY, endY);
+                    const selW = Math.abs(endX - selectionStartX);
+                    const selH = Math.abs(endY - selectionStartY);
+                    selectionRectEl.remove();
+                    selectionRectEl = null;
+                    // Clear any existing selection
+                    closeSidebar();
+                    selectedNodes = [];
+                    selectedNode = null;
+                    document.querySelectorAll('.node').forEach(el => el.classList.remove('selected'));
+                    // Select nodes within the rectangle
+                    nodes.forEach(node => {
+                        if (node.x < selX + selW && node.x + node.width > selX && node.y < selY + selH && node.y + node.height > selY) {
+                            selectedNodes.push(node);
+                            document.getElementById(node.id).classList.add('selected');
+                        }
+                    });
+                    if (selectedNodes.length > 0) {
+                        showToast(`${selectedNodes.length} nodes selected`);
+                    } else {
+                        showToast('No nodes selected');
+                    }
+                }
             }
         });
 
@@ -1419,6 +1505,7 @@
             const y = (e.clientY - rect.top) / zoomLevel - panY;
             
             createNode(shape, snapToGrid(x), snapToGrid(y));
+            lastUsedShape = shape;
         });
 
         function snapToGrid(value) {
@@ -1618,6 +1705,7 @@
                 renderNode(newNode);
                 updateMermaidCode();
                 updateStats();
+                lastUsedShape = newNode.shape;
                 showToast('Node duplicated!');
             }
         }
@@ -1644,6 +1732,9 @@
                 nodes = nodes.filter(n => n.id !== nodeId);
                 connections = connections.filter(c => 
                     c.from !== nodeId && c.to !== nodeId);
+                if (selectedConnection && (selectedConnection.from === nodeId || selectedConnection.to === nodeId)) {
+                    selectedConnection = null;
+                }
                 
                 // Remove from DOM
                 const nodeElement = document.getElementById(nodeId);
@@ -1766,6 +1857,26 @@
 
             // Drag functionality
             nodeEl.addEventListener('mousedown', (e) => {
+                if (e.altKey) {
+                    if (connectionMode) toggleConnectionMode();
+                    e.stopPropagation();
+                    const rect = canvas.getBoundingClientRect();
+                    altSelecting = true;
+                    selectionStartX = (e.clientX - rect.left) / zoomLevel - panX;
+                    selectionStartY = (e.clientY - rect.top) / zoomLevel - panY;
+                    selectionRectEl = document.createElement('div');
+                    selectionRectEl.className = 'selection-rect';
+                    selectionRectEl.style.position = 'absolute';
+                    selectionRectEl.style.border = '1px dashed #3b82f6';
+                    selectionRectEl.style.background = 'rgba(59, 130, 246, 0.1)';
+                    selectionRectEl.style.left = selectionStartX + 'px';
+                    selectionRectEl.style.top = selectionStartY + 'px';
+                    selectionRectEl.style.width = '0px';
+                    selectionRectEl.style.height = '0px';
+                    canvas.appendChild(selectionRectEl);
+                    e.preventDefault();
+                    return;
+                }
                 if (connectionMode || groupMode || e.button === 2 || editingNode) return;
                 
                 draggedNode = node;
@@ -1876,6 +1987,8 @@
 
         function selectNode(node) {
             // Clear previous selection
+            document.querySelectorAll('.connection.selected').forEach(el => el.classList.remove('selected'));
+            selectedConnection = null;
             document.querySelectorAll('.node').forEach(el => el.classList.remove('selected'));
             
             selectedNode = node;
@@ -2069,12 +2182,16 @@
             };
             
             groups.push(group);
-            renderGroup(group);
+            
             showToast(`Group created with ${selectedNodes.length} nodes`);
             
             // Clear selection
             selectedNodes = [];
             document.querySelectorAll('.node').forEach(el => el.classList.remove('selected'));
+            
+            renderGroup(group);
+            updateMermaidCode();
+            updateStats();
         }
 
         function renderGroup(group) {
@@ -2152,6 +2269,25 @@
             
             svg.appendChild(path);
             svg.appendChild(arrow);
+            svg.dataset.from = fromNode.id;
+            svg.dataset.to = toNode.id;
+            svg.addEventListener('click', (e) => {
+                e.stopPropagation();
+                // Clear any node selection
+                closeSidebar();
+                selectedNode = null;
+                selectedNodes = [];
+                document.querySelectorAll('.node').forEach(el => el.classList.remove('selected'));
+                // Clear any previous connection selection highlight
+                document.querySelectorAll('.connection.selected').forEach(el => el.classList.remove('selected'));
+                // Mark this connection as selected
+                svg.classList.add('selected');
+                // Set selectedConnection reference
+                selectedConnection = connections.find(c => c.from === svg.dataset.from && c.to === svg.dataset.to) || null;
+            });
+            svg.addEventListener('dblclick', (e) => {
+                e.stopPropagation();
+            });
             canvas.appendChild(svg);
         }
 
@@ -2256,7 +2392,20 @@
             });
         });
 
-        // Canvas click to deselect
+        // Canvas events for selection and deselection
+        canvas.addEventListener('dblclick', (e) => {
+            if (e.target === canvas) {
+                const rect = canvas.getBoundingClientRect();
+                const x = (e.clientX - rect.left) / zoomLevel - panX;
+                const y = (e.clientY - rect.top) / zoomLevel - panY;
+                let shape = 'rectangle';
+                if (e.shiftKey || shiftPressed) {
+                    shape = lastUsedShape;
+                }
+                createNode(shape, snapToGrid(x), snapToGrid(y));
+                lastUsedShape = shape;
+            }
+        });
         canvas.addEventListener('click', (e) => {
             if (e.target === canvas) {
                 closeSidebar();
@@ -2284,6 +2433,10 @@
                     rightClickNode = null;
                     updateModeIndicator();
                 }
+                if (selectedConnection) {
+                    document.querySelectorAll('.connection.selected').forEach(el => el.classList.remove('selected'));
+                    selectedConnection = null;
+                }
             }
         });
 
@@ -2293,6 +2446,42 @@
         updateHistoryButtons();
         updateStats();
         updateZoom();
+
+        // New functions for connection manipulation
+        function reverseSelectedConnection() {
+            if (!selectedConnection) return;
+            const conn = selectedConnection;
+            const newFrom = conn.to;
+            const newTo = conn.from;
+            const exists = connections.some(c => c.from === newFrom && c.to === newTo);
+            if (exists) {
+                showToast('Connection already exists!');
+                return;
+            }
+            saveState();
+            conn.from = newFrom;
+            conn.to = newTo;
+            updateConnections();
+            updateMermaidCode();
+            updateStats();
+            // Keep it selected after reversing
+            const connEl = document.querySelector(`.connection[data-from='${newFrom}'][data-to='${newTo}']`);
+            if (connEl) {
+                document.querySelectorAll('.connection.selected').forEach(el => el.classList.remove('selected'));
+                connEl.classList.add('selected');
+            }
+            showToast('Connection reversed!');
+        }
+        function deleteSelectedConnection() {
+            if (!selectedConnection) return;
+            saveState();
+            connections = connections.filter(c => c !== selectedConnection);
+            updateConnections();
+            updateMermaidCode();
+            updateStats();
+            showToast('Connection deleted!');
+            selectedConnection = null;
+        }
     </script>
 </body>
 </html>
