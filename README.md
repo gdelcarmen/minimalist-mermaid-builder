@@ -24,6 +24,7 @@ Quick actions include double‑clicking a node to rename it and shift/right‑cl
 - Toggle grid display, undo/redo history and clear the canvas
 - Sidebar for node details and generated Mermaid code
 - Export the diagram or copy the code to the clipboard
+- Keyboard-accessible buttons with visible focus outlines
 
 ## Compatibility & Dependencies
 

@@ -841,6 +841,11 @@
             display: block;
             animation: pulse 2s infinite;
         }
+
+        button:focus {
+            outline: 2px solid #2563eb;
+            outline-offset: 2px;
+        }
     </style>
 </head>
 <body>
@@ -867,31 +872,31 @@
             </div>
 
             <div class="undo-redo">
-                <button class="history-btn" onclick="undo()" id="undoBtn" title="Undo (Ctrl+Z)" disabled>
+                <button class="history-btn" onclick="undo()" id="undoBtn" title="Undo (Ctrl+Z)" aria-label="Undo" disabled>
                     ↶
                 </button>
-                <button class="history-btn" onclick="redo()" id="redoBtn" title="Redo (Ctrl+Y)" disabled>
+                <button class="history-btn" onclick="redo()" id="redoBtn" title="Redo (Ctrl+Y)" aria-label="Redo" disabled>
                     ↷
                 </button>
             </div>
 
             <div class="toolbar-controls">
-                <button class="tool-btn primary" onclick="toggleConnectionMode()" id="connectBtn" title="Connection Mode (C)">
+                <button class="tool-btn primary" onclick="toggleConnectionMode()" id="connectBtn" title="Connection Mode (C)" aria-label="Toggle Connection Mode">
                     Connect
                 </button>
-                <button class="tool-btn" onclick="toggleGroupMode()" id="groupBtn" title="Group Mode (G)">
+                <button class="tool-btn" onclick="toggleGroupMode()" id="groupBtn" title="Group Mode (G)" aria-label="Toggle Group Mode">
                     Group
                 </button>
-                <button class="tool-btn" onclick="toggleHelp()" id="helpBtn" title="Show Shortcuts (H)">
+                <button class="tool-btn" onclick="toggleHelp()" id="helpBtn" title="Show Shortcuts (H)" aria-label="Toggle Help Panel">
                     Help
                 </button>
-                <button class="tool-btn" onclick="document.getElementById('fileInput').click()" title="Load File">
+                <button class="tool-btn" onclick="document.getElementById('fileInput').click()" title="Load File" aria-label="Load File">
                     Load
                 </button>
-                <button class="tool-btn success" onclick="saveData()" title="Save File (Ctrl+S)">
+                <button class="tool-btn success" onclick="saveData()" title="Save File (Ctrl+S)" aria-label="Save File">
                     Save
                 </button>
-                <button class="tool-btn danger" onclick="clearAll()" title="Clear All">
+                <button class="tool-btn danger" onclick="clearAll()" title="Clear All" aria-label="Clear All">
                     Clear
                 </button>
             </div>
@@ -899,16 +904,16 @@
 
         <div class="main-content">
             <div class="canvas-area">
-                <button class="grid-toggle" onclick="toggleGrid()" id="gridBtn">Grid: ON</button>
+                <button class="grid-toggle" onclick="toggleGrid()" id="gridBtn" aria-label="Toggle Grid">Grid: ON</button>
                 <div class="mode-indicator" id="modeIndicator"></div>
                 <div class="stats" id="stats">0 nodes, 0 connections</div>
                 <div class="shortcuts-hint" id="shortcutsHint">Press H for shortcuts</div>
                 
                 <div class="zoom-controls">
-                    <button class="zoom-btn" onclick="zoomIn()" title="Zoom In (+)">+</button>
+                    <button class="zoom-btn" onclick="zoomIn()" title="Zoom In (+)" aria-label="Zoom In">+</button>
                     <div class="zoom-level" id="zoomLevel">100%</div>
-                    <button class="zoom-btn" onclick="zoomOut()" title="Zoom Out (-)">−</button>
-                    <button class="zoom-btn" onclick="resetZoom()" title="Reset Zoom (0)" style="font-size: 12px;">⌂</button>
+                    <button class="zoom-btn" onclick="zoomOut()" title="Zoom Out (-)" aria-label="Zoom Out">−</button>
+                    <button class="zoom-btn" onclick="resetZoom()" title="Reset Zoom (0)" aria-label="Reset Zoom" style="font-size: 12px;">⌂</button>
                 </div>
 
                 <div class="help-panel" id="helpPanel">
@@ -926,6 +931,7 @@
                         <li><strong>Ctrl+drag:</strong> Pan canvas</li>
                         <li><strong>Delete:</strong> Delete selected</li>
                         <li><strong>Escape:</strong> Cancel action</li>
+                        <li><strong>Tab:</strong> Move focus between buttons</li>
                     </ul>
                     <h4 style="margin-top: 12px;">🛠️ Shortcuts</h4>
                     <ul>
@@ -947,7 +953,7 @@
 
             <div class="sidebar" id="sidebar">
                 <div class="sidebar-content">
-                    <button class="close-sidebar" onclick="closeSidebar()" title="Close">✕</button>
+                    <button class="close-sidebar" onclick="closeSidebar()" title="Close" aria-label="Close Sidebar">✕</button>
                     
                     <div class="panel">
                         <h3>Node Properties</h3>
@@ -974,10 +980,10 @@
                                 <div class="color-option" style="background: #8b5cf6" data-color="purple"></div>
                             </div>
                         </div>
-                        <button class="btn primary" onclick="updateNode()" id="updateBtn">
+                        <button class="btn primary" onclick="updateNode()" id="updateBtn" aria-label="Update Node">
                             Update Node
                         </button>
-                        <button class="btn danger" onclick="deleteNode()" id="deleteBtn">
+                        <button class="btn danger" onclick="deleteNode()" id="deleteBtn" aria-label="Delete Node">
                             Delete Node
                         </button>
                     </div>
@@ -987,10 +993,10 @@
                         <div class="mermaid-code" id="mermaidOutput">
                             Add nodes to generate code...
                         </div>
-                        <button class="btn primary" onclick="copyCode()">
+                        <button class="btn primary" onclick="copyCode()" aria-label="Copy Code">
                             Copy Code
                         </button>
-                        <button class="btn" onclick="exportMermaid()">
+                        <button class="btn" onclick="exportMermaid()" aria-label="Export File">
                             Export File
                         </button>
                     </div>
