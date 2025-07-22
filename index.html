@@ -346,6 +346,18 @@
             transition: all 0.2s ease;
         }
 
+        .connection-label {
+            font-size: 12px;
+            fill: #64748b;
+            pointer-events: none;
+        }
+
+        .selection-rect {
+            position: absolute;
+            pointer-events: none;
+            z-index: 50;
+        }
+
         .connection:hover .connection-arrow {
             fill: #3b82f6;
         }
@@ -873,8 +885,11 @@
                 <button class="tool-btn" onclick="toggleHelp()" id="helpBtn" title="Show Shortcuts (H)">
                     Help
                 </button>
-                <button class="tool-btn success" onclick="exportDiagram()" title="Export (Ctrl+E)">
-                    Export
+                <button class="tool-btn" onclick="document.getElementById('fileInput').click()" title="Load File">
+                    Load
+                </button>
+                <button class="tool-btn success" onclick="saveData()" title="Save File (Ctrl+S)">
+                    Save
                 </button>
                 <button class="tool-btn danger" onclick="clearAll()" title="Clear All">
                     Clear
@@ -918,7 +933,8 @@
                         <li><strong>G:</strong> Group mode</li>
                         <li><strong>H:</strong> Toggle this help</li>
                         <li><strong>Ctrl+Z/Y:</strong> Undo/Redo</li>
-                        <li><strong>Ctrl+E:</strong> Export diagram</li>
+                        <li><strong>Ctrl+S:</strong> Save diagram</li>
+                        <li><strong>Ctrl+O:</strong> Load diagram</li>
                     </ul>
                 </div>
                 
@@ -974,7 +990,7 @@
                         <button class="btn primary" onclick="copyCode()">
                             Copy Code
                         </button>
-                        <button class="btn" onclick="exportDiagram()">
+                        <button class="btn" onclick="exportMermaid()">
                             Export File
                         </button>
                     </div>
@@ -985,6 +1001,7 @@
 
     <div class="toast" id="toast"></div>
     <div class="tooltip" id="tooltip"></div>
+    <input type="file" id="fileInput" accept="application/json" style="display:none" onchange="loadData(event)">
     <script>
         // Application state
         let nodes = [];
@@ -1028,6 +1045,14 @@
             cyan: '#0ea5e9',
             orange: '#f59e0b',
             purple: '#8b5cf6'
+        };
+
+        const shapePresets = {
+            rectangle: 'Process',
+            diamond: 'Decision',
+            circle: 'Terminal',
+            process: 'Subprocess',
+            database: 'Database'
         };
 
         // Initialize
@@ -1102,10 +1127,16 @@
                     case 'y':
                         if (e.ctrlKey) redo();
                         break;
-                    case 'e':
+                    case 's':
                         if (e.ctrlKey) {
                             e.preventDefault();
-                            exportDiagram();
+                            saveData();
+                        }
+                        break;
+                    case 'o':
+                        if (e.ctrlKey) {
+                            e.preventDefault();
+                            document.getElementById('fileInput').click();
                         }
                         break;
                     case 'r':
@@ -1357,8 +1388,10 @@
                             document.getElementById(node.id).classList.add('selected');
                         }
                     });
-                    if (selectedNodes.length > 0) {
-                        showToast(`${selectedNodes.length} nodes selected`);
+                    if (selectedNodes.length > 1) {
+                        createGroup();
+                    } else if (selectedNodes.length === 1) {
+                        showToast('Only one node selected');
                     } else {
                         showToast('No nodes selected');
                     }
@@ -1775,7 +1808,7 @@
             const node = {
                 id: `node${nodeCounter++}`,
                 shape: shape,
-                text: `${shape.charAt(0).toUpperCase() + shape.slice(1)} ${nodeCounter - 1}`,
+                text: `${shapePresets[shape] || (shape.charAt(0).toUpperCase() + shape.slice(1))} ${nodeCounter - 1}`,
                 description: '',
                 details: '',
                 x: x,
@@ -1929,7 +1962,8 @@
         function handleRightClickConnection(node) {
             const connection = {
                 from: rightClickNode.id,
-                to: node.id
+                to: node.id,
+                label: ''
             };
             
             const exists = connections.some(c => 
@@ -1962,7 +1996,8 @@
                 // Second node - create connection
                 const connection = {
                     from: shiftSelectedNode.id,
-                    to: node.id
+                    to: node.id,
+                    label: ''
                 };
                 
                 const exists = connections.some(c => 
@@ -2049,7 +2084,8 @@
                 // Create connection
                 const connection = {
                     from: connectionStart.id,
-                    to: node.id
+                    to: node.id,
+                    label: ''
                 };
                 
                 const exists = connections.some(c => 
@@ -2213,14 +2249,14 @@
             connections.forEach(conn => {
                 const fromNode = nodes.find(n => n.id === conn.from);
                 const toNode = nodes.find(n => n.id === conn.to);
-                
+
                 if (fromNode && toNode) {
-                    drawConnection(fromNode, toNode);
+                    drawConnection(fromNode, toNode, conn);
                 }
             });
         }
 
-        function drawConnection(fromNode, toNode) {
+        function drawConnection(fromNode, toNode, conn) {
             const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
             svg.classList.add('connection');
             
@@ -2269,6 +2305,15 @@
             
             svg.appendChild(path);
             svg.appendChild(arrow);
+
+            if (conn.label) {
+                const textEl = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+                textEl.setAttribute('x', (startX + endX) / 2 - minX);
+                textEl.setAttribute('y', (startY + endY) / 2 - minY - 5);
+                textEl.textContent = conn.label;
+                textEl.classList.add('connection-label');
+                svg.appendChild(textEl);
+            }
             svg.dataset.from = fromNode.id;
             svg.dataset.to = toNode.id;
             svg.addEventListener('click', (e) => {
@@ -2287,6 +2332,14 @@
             });
             svg.addEventListener('dblclick', (e) => {
                 e.stopPropagation();
+                const connObj = connections.find(c => c.from === svg.dataset.from && c.to === svg.dataset.to);
+                const label = prompt('Enter action name for this connection:', connObj.label || '');
+                if (label !== null) {
+                    saveState();
+                    connObj.label = label.trim();
+                    updateConnections();
+                    updateMermaidCode();
+                }
             });
             canvas.appendChild(svg);
         }
@@ -2316,7 +2369,12 @@
             connections.forEach(conn => {
                 const fromId = conn.from.replace(/[^a-zA-Z0-9]/g, '');
                 const toId = conn.to.replace(/[^a-zA-Z0-9]/g, '');
-                code += `    ${fromId} --> ${toId}\n`;
+                if (conn.label) {
+                    const cleanLabel = conn.label.replace(/"/g, '\\"');
+                    code += `    ${fromId} --|${cleanLabel}|--> ${toId}\n`;
+                } else {
+                    code += `    ${fromId} --> ${toId}\n`;
+                }
             });
             
             document.getElementById('mermaidOutput').textContent = code;
@@ -2336,7 +2394,7 @@
             });
         }
 
-        function exportDiagram() {
+        function exportMermaid() {
             const code = document.getElementById('mermaidOutput').textContent;
             const blob = new Blob([code], { type: 'text/plain' });
             const url = URL.createObjectURL(blob);
@@ -2346,6 +2404,43 @@
             a.click();
             URL.revokeObjectURL(url);
             showToast('Diagram exported successfully!');
+        }
+
+        function saveData() {
+            const data = { nodes, connections, groups, nodeCounter };
+            const blob = new Blob([JSON.stringify(data)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `flowchart-${Date.now()}.json`;
+            a.click();
+            URL.revokeObjectURL(url);
+            showToast('File saved!');
+        }
+
+        function loadData(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = e => {
+                try {
+                    const data = JSON.parse(e.target.result);
+                    nodes = data.nodes || [];
+                    connections = data.connections || [];
+                    groups = data.groups || [];
+                    nodeCounter = data.nodeCounter || nodes.length + 1;
+                    renderAll();
+                    updateMermaidCode();
+                    updateStats();
+                    saveState();
+                    showToast('File loaded!');
+                } catch(err) {
+                    alert('Invalid file format');
+                }
+            };
+            reader.readAsText(file);
+            // Reset input
+            event.target.value = '';
         }
 
         function clearAll() {
